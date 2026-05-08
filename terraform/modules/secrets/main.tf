@@ -69,7 +69,7 @@ resource "aws_secretsmanager_secret_version" "app" {
   })
 
   lifecycle {
-    ignore_changes = [secret_string]  # Don't overwrite after initial creation
+    ignore_changes = [secret_string] # Don't overwrite after initial creation
   }
 }
 

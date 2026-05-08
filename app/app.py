@@ -35,19 +35,21 @@ if OTEL_ENABLED:
         from opentelemetry import trace
         from opentelemetry.sdk.trace import TracerProvider
         from opentelemetry.sdk.trace.export import BatchSpanProcessor
-        from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
+        from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import (
+            OTLPSpanExporter,
+        )
         from opentelemetry.sdk.resources import Resource
         from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 
-        resource = Resource.create({
-            "service.name": os.getenv("OTEL_SERVICE_NAME", "fastapi-app"),
-            "service.version": "1.0.0",
-            "deployment.environment": os.getenv("ENVIRONMENT", "production"),
-        })
-        provider = TracerProvider(resource=resource)
-        provider.add_span_processor(
-            BatchSpanProcessor(OTLPSpanExporter())
+        resource = Resource.create(
+            {
+                "service.name": os.getenv("OTEL_SERVICE_NAME", "fastapi-app"),
+                "service.version": "1.0.0",
+                "deployment.environment": os.getenv("ENVIRONMENT", "production"),
+            }
         )
+        provider = TracerProvider(resource=resource)
+        provider.add_span_processor(BatchSpanProcessor(OTLPSpanExporter()))
         trace.set_tracer_provider(provider)
         tracer = trace.get_tracer("fastapi_app")
     except ImportError:
@@ -139,6 +141,7 @@ async def lifespan(app: FastAPI):
     if OTEL_ENABLED:
         try:
             from opentelemetry import trace
+
             trace.get_tracer_provider().force_flush()
         except Exception:
             pass
@@ -159,8 +162,8 @@ signal.signal(signal.SIGTERM, _handle_sigterm)
 app = FastAPI(
     title="FastAPI Production Service",
     version="1.0.0",
-    docs_url=None,       # Disable Swagger UI in production
-    redoc_url=None,       # Disable ReDoc in production
+    docs_url=None,  # Disable Swagger UI in production
+    redoc_url=None,  # Disable ReDoc in production
     lifespan=lifespan,
 )
 
@@ -168,6 +171,7 @@ app = FastAPI(
 if OTEL_ENABLED:
     try:
         from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
+
         FastAPIInstrumentor.instrument_app(app)
     except Exception:
         pass
@@ -187,6 +191,7 @@ async def observability_middleware(request: Request, call_next):
     if OTEL_ENABLED:
         try:
             from opentelemetry import trace as otel_trace
+
             span = otel_trace.get_current_span()
             ctx = span.get_span_context()
             if ctx.is_valid:
