@@ -1,0 +1,143 @@
+# =============================================================================
+# FastAPI App — Helm Values
+# =============================================================================
+
+# -- Application
+replicaCount: 2
+
+image:
+  repository: 123456789012.dkr.ecr.us-east-1.amazonaws.com/fastapi-app  # TODO: Replace with your ECR repo URL
+  tag: "latest"
+  pullPolicy: IfNotPresent
+
+# -- Service
+service:
+  type: ClusterIP
+  port: 80
+  targetPort: 8000
+
+# -- Service Account
+serviceAccount:
+  create: true
+  automountServiceAccountToken: false
+  annotations: {}
+    # eks.amazonaws.com/role-arn: arn:aws:iam::123456789012:role/fastapi-app
+
+# -- Pod Security
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  runAsGroup: 1000
+  fsGroup: 1000
+  seccompProfile:
+    type: RuntimeDefault
+
+containerSecurityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop:
+      - ALL
+
+# -- Resources
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 256Mi
+
+# -- Probes
+startupProbe:
+  httpGet:
+    path: /health
+    port: http
+  failureThreshold: 30
+  periodSeconds: 2
+
+livenessProbe:
+  httpGet:
+    path: /health
+    port: http
+  initialDelaySeconds: 0
+  periodSeconds: 10
+  timeoutSeconds: 3
+  failureThreshold: 3
+
+readinessProbe:
+  httpGet:
+    path: /ready
+    port: http
+  initialDelaySeconds: 0
+  periodSeconds: 5
+  timeoutSeconds: 3
+  failureThreshold: 3
+
+# -- Autoscaling (HPA)
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: 80
+  scaleDown:
+    stabilizationWindowSeconds: 300
+
+# -- Pod Disruption Budget
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1
+
+# -- Network Policy
+networkPolicy:
+  enabled: true
+  ingressNamespaces:
+    - ingress-nginx
+    - monitoring
+
+# -- Monitoring
+monitoring:
+  enabled: true
+  serviceMonitor:
+    interval: 15s
+    path: /metrics
+  prometheusRule:
+    enabled: true
+
+# -- External Secrets (ESO)
+externalSecrets:
+  enabled: false   # Enable when the app needs secrets
+  refreshInterval: 1h
+  secretStoreRef:
+    name: aws-secrets-manager
+    kind: ClusterSecretStore
+  target:
+    name: fastapi-app-secrets
+  data: []
+    # - secretKey: DATABASE_URL
+    #   remoteRef:
+    #     key: prod/fastapi-app
+    #     property: database_url
+    # - secretKey: API_KEY
+    #   remoteRef:
+    #     key: prod/fastapi-app
+    #     property: api_key
+
+# -- Environment variables
+env:
+  LOG_LEVEL: "INFO"
+  GRACEFUL_SHUTDOWN_TIMEOUT: "10"
+
+# -- Node scheduling
+nodeSelector: {}
+
+tolerations: []
+
+# -- Topology spread (prefer spreading across AZs)
+topologySpreadConstraints:
+  - maxSkew: 1
+    topologyKey: topology.kubernetes.io/zone
+    whenUnsatisfiable: ScheduleAnyway
+    labelSelector:
+      matchLabels: {}  # Populated by template

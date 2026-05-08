@@ -1,0 +1,18 @@
+# Core
+fastapi==0.115.12
+uvicorn[standard]==0.34.3
+
+# Observability — Logging
+structlog==25.1.0
+
+# Observability — Metrics
+prometheus-client==0.22.1
+
+# Observability — Distributed Tracing (Tempo via OTLP)
+opentelemetry-api==1.33.0
+opentelemetry-sdk==1.33.0
+opentelemetry-exporter-otlp-proto-grpc==1.33.0
+opentelemetry-instrumentation-fastapi==0.54b0
+
+# Dev / Test (install separately)
+# pip install pytest pytest-cov httpx ruff

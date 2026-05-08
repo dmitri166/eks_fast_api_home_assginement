@@ -1,0 +1,58 @@
+# =============================================================================
+# ArgoCD AppProject — Platform Team Scope
+# =============================================================================
+# Restricts what ArgoCD Applications in this project can do.
+# This follows the principle of least privilege for GitOps.
+# =============================================================================
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: platform
+  namespace: argocd
+  labels:
+    app.kubernetes.io/part-of: platform
+spec:
+  description: "Platform team managed applications"
+
+  # Only allow sources from our repo
+  sourceRepos:
+    - https://github.com/<YOUR_GITHUB_USERNAME>/AI_infra_assignment.git  # TODO: Update with your repo URL
+
+  # Allowed destination namespaces
+  destinations:
+    - server: https://kubernetes.default.svc
+      namespace: fastapi-app
+    - server: https://kubernetes.default.svc
+      namespace: monitoring
+
+  # Allowed Kubernetes resource types
+  clusterResourceWhitelist:
+    - group: ""
+      kind: Namespace
+
+  namespaceResourceWhitelist:
+    - group: ""
+      kind: "*"
+    - group: apps
+      kind: "*"
+    - group: autoscaling
+      kind: "*"
+    - group: policy
+      kind: "*"
+    - group: networking.k8s.io
+      kind: "*"
+    - group: monitoring.coreos.com
+      kind: "*"
+    - group: external-secrets.io
+      kind: "*"
+
+  # Deny dangerous resources
+  namespaceResourceBlacklist:
+    - group: ""
+      kind: ResourceQuota
+    - group: ""
+      kind: LimitRange
+
+  # Orphaned resource monitoring
+  orphanedResources:
+    warn: true

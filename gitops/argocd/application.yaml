@@ -1,0 +1,59 @@
+# =============================================================================
+# ArgoCD Application — FastAPI App GitOps Deployment
+# =============================================================================
+# This Application CR tells ArgoCD to sync the Helm chart from this repo.
+# ArgoCD watches for changes and automatically reconciles the desired state.
+# =============================================================================
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: fastapi-app
+  namespace: argocd
+  labels:
+    app.kubernetes.io/part-of: platform
+    app.kubernetes.io/managed-by: argocd
+  # Finalizer ensures proper cleanup on delete
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: platform
+
+  source:
+    repoURL: https://github.com/<YOUR_GITHUB_USERNAME>/AI_infra_assignment.git  # TODO: Update with your repo URL
+    targetRevision: main
+    path: helm/fastapi-app
+    helm:
+      valueFiles:
+        - values.yaml
+      # Environment-specific overrides
+      parameters:
+        - name: image.tag
+          value: latest  # Overridden by CI/CD per commit
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: fastapi-app
+
+  syncPolicy:
+    automated:
+      prune: true        # Remove resources that are no longer in Git
+      selfHeal: true     # Revert manual changes to match Git state
+      allowEmpty: false   # Don't sync if source is empty (safety)
+    syncOptions:
+      - CreateNamespace=true
+      - PrunePropagationPolicy=foreground
+      - PruneLast=true
+      - ServerSideApply=true
+    retry:
+      limit: 3
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m
+
+  # Health checks — ArgoCD monitors these for rollout status
+  ignoreDifferences:
+    - group: apps
+      kind: Deployment
+      jsonPointers:
+        - /spec/replicas  # HPA manages replicas, don't fight it

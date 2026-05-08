@@ -1,0 +1,20 @@
+Thank you for installing {{ .Chart.Name }}!
+
+Your release "{{ .Release.Name }}" has been deployed to namespace "{{ .Release.Namespace }}".
+
+To verify the deployment:
+
+  kubectl get pods -n {{ .Release.Namespace }} -l app.kubernetes.io/instance={{ .Release.Name }}
+
+To check the service:
+
+  kubectl get svc -n {{ .Release.Namespace }} {{ include "fastapi-app.fullname" . }}
+
+To view application logs:
+
+  kubectl logs -n {{ .Release.Namespace }} -l app.kubernetes.io/instance={{ .Release.Name }} --tail=50 | jq '.'
+
+To test the health endpoint (port-forward):
+
+  kubectl port-forward -n {{ .Release.Namespace }} svc/{{ include "fastapi-app.fullname" . }} 8080:{{ .Values.service.port }}
+  curl http://localhost:8080/health

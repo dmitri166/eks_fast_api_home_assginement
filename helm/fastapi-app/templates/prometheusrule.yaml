@@ -1,0 +1,96 @@
+{{- if and .Values.monitoring.enabled .Values.monitoring.prometheusRule.enabled }}
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: {{ include "fastapi-app.fullname" . }}
+  labels:
+    {{- include "fastapi-app.labels" . | nindent 4 }}
+spec:
+  groups:
+    - name: fastapi-app.rules
+      rules:
+        # ---------------------------------------------------------------
+        # CRITICAL: /process endpoint failure rate > 1% (business-critical)
+        # ---------------------------------------------------------------
+        - alert: ProcessHighErrorRate
+          expr: |
+            (
+              sum(rate(process_requests_total{status="error"}[5m]))
+              /
+              sum(rate(process_requests_total[5m]))
+            ) > 0.01
+          for: 5m
+          labels:
+            severity: critical
+            team: platform
+          annotations:
+            summary: "High error rate on /process endpoint"
+            description: |
+              /process error rate is {{ "{{ $value | humanizePercentage }}" }}
+              (threshold: 1%). This is a business-critical endpoint.
+            runbook_url: "https://github.com/<YOUR_GITHUB_USERNAME>/AI_infra_assignment/blob/main/docs/runbook.md#processhigherrorrate"
+
+        # ---------------------------------------------------------------
+        # WARNING: /process p99 latency > 400ms
+        # ---------------------------------------------------------------
+        - alert: ProcessHighLatency
+          expr: |
+            histogram_quantile(0.99,
+              sum(rate(process_duration_seconds_bucket[5m])) by (le)
+            ) > 0.4
+          for: 5m
+          labels:
+            severity: warning
+            team: platform
+          annotations:
+            summary: "High p99 latency on /process endpoint"
+            description: |
+              /process p99 latency is {{ "{{ $value | humanizeDuration }}" }}
+              (threshold: 400ms).
+
+        # ---------------------------------------------------------------
+        # CRITICAL: No ready pods
+        # ---------------------------------------------------------------
+        - alert: AppDown
+          expr: |
+            kube_deployment_status_replicas_available{deployment="{{ include "fastapi-app.fullname" . }}"} == 0
+          for: 1m
+          labels:
+            severity: critical
+            team: platform
+          annotations:
+            summary: "FastAPI app has no available replicas"
+            description: "All pods are down. Immediate investigation required."
+            runbook_url: "https://github.com/<YOUR_GITHUB_USERNAME>/AI_infra_assignment/blob/main/docs/runbook.md#appdown"
+
+        # ---------------------------------------------------------------
+        # WARNING: High memory usage (> 90% of limit)
+        # ---------------------------------------------------------------
+        - alert: HighMemoryUsage
+          expr: |
+            (
+              container_memory_working_set_bytes{container="{{ .Chart.Name }}"}
+              /
+              container_spec_memory_limit_bytes{container="{{ .Chart.Name }}"}
+            ) > 0.9
+          for: 5m
+          labels:
+            severity: warning
+            team: platform
+          annotations:
+            summary: "FastAPI app memory usage > 90%"
+            description: "Pod {{ "{{ $labels.pod }}" }} is using {{ "{{ $value | humanizePercentage }}" }} of its memory limit."
+
+        # ---------------------------------------------------------------
+        # WARNING: Pod restart loop
+        # ---------------------------------------------------------------
+        - alert: PodRestartLoop
+          expr: |
+            increase(kube_pod_container_status_restarts_total{container="{{ .Chart.Name }}"}[15m]) > 3
+          labels:
+            severity: warning
+            team: platform
+          annotations:
+            summary: "FastAPI app pod restart loop detected"
+            description: "Pod {{ "{{ $labels.pod }}" }} has restarted {{ "{{ $value }}" }} times in 15 minutes."
+{{- end }}
