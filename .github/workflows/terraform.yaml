@@ -25,7 +25,7 @@ env:
 
 jobs:
   terraform:
-    name: "🏗️ Terraform"
+    name: "Terraform"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -65,7 +65,7 @@ jobs:
           script: |
             const fs = require('fs');
             const plan = fs.readFileSync('/tmp/plan.txt', 'utf8');
-            const output = `#### Terraform Plan 📋
+            const output = `#### Terraform Plan
             \`\`\`
             ${plan.substring(0, 65000)}
             \`\`\`
