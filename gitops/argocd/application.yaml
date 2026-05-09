@@ -19,7 +19,7 @@ spec:
   project: platform
 
   source:
-    repoURL: https://github.com/<YOUR_GITHUB_USERNAME>/AI_infra_assignment.git  # TODO: Update with your repo URL
+    repoURL: https://github.com/dmitri166/eks_fast_api_home_assginement.git
     targetRevision: main
     path: helm/fastapi-app
     helm:

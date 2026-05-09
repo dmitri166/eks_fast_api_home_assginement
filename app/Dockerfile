@@ -29,7 +29,7 @@ FROM python:3.12-slim AS runtime
 LABEL org.opencontainers.image.title="fastapi-app" \
       org.opencontainers.image.description="Production-ready FastAPI service" \
       org.opencontainers.image.version="1.0.0" \
-      org.opencontainers.image.source="https://github.com/<YOUR_GITHUB_USERNAME>/AI_infra_assignment"
+      org.opencontainers.image.source="https://github.com/dmitri166/eks_fast_api_home_assginement"
 
 # Security: create non-root user
 RUN groupadd --gid 1000 appuser && \

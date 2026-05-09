@@ -6,7 +6,7 @@
 replicaCount: 2
 
 image:
-  repository: 123456789012.dkr.ecr.us-east-1.amazonaws.com/fastapi-app  # TODO: Replace with your ECR repo URL
+  repository: 123456789012.dkr.ecr.us-east-1.amazonaws.com/fastapi-app
   tag: "latest"
   pullPolicy: IfNotPresent
 

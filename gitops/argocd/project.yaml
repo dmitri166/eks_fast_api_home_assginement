@@ -16,7 +16,7 @@ spec:
 
   # Only allow sources from our repo
   sourceRepos:
-    - https://github.com/<YOUR_GITHUB_USERNAME>/AI_infra_assignment.git  # TODO: Update with your repo URL
+    - https://github.com/dmitri166/eks_fast_api_home_assginement.git
 
   # Allowed destination namespaces
   destinations:
