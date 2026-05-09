@@ -18,6 +18,8 @@ variable "availability_zones" {
   type = list(string)
 }
 
+data "aws_caller_identity" "current" {}
+
 # ---------------------------------------------------------------------------
 # VPC
 # ---------------------------------------------------------------------------
@@ -145,9 +147,23 @@ resource "aws_kms_key" "logs" {
   description             = "KMS key for VPC flow logs"
   deletion_window_in_days = 7
   enable_key_rotation     = true
+  policy                  = data.aws_iam_policy_document.logs_kms.json # CKV2_AWS_64
 
   tags = {
     Name = "${var.project_name}-${var.environment}-logs-kms"
+  }
+}
+
+data "aws_iam_policy_document" "logs_kms" {
+  statement {
+    sid       = "Enable IAM User Permissions"
+    effect    = "Allow"
+    actions   = ["kms:*"]
+    resources = ["*"]
+    principals {
+      type        = "AWS"
+      identifiers = ["arn:aws:iam::${data.aws_caller_identity.current.account_id}:root"]
+    }
   }
 }
 
@@ -169,7 +185,7 @@ resource "aws_flow_log" "main" {
 
 resource "aws_cloudwatch_log_group" "flow_logs" {
   name              = "/aws/vpc/flow-logs/${var.project_name}-${var.environment}"
-  retention_in_days = 365 # CKV_AWS_338: Retain logs for at least 1 year
+  retention_in_days = 365                  # CKV_AWS_338: Retain logs for at least 1 year
   kms_key_id        = aws_kms_key.logs.arn # CKV_AWS_158: Encrypt logs with KMS
 }
 

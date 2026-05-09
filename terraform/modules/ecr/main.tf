@@ -10,6 +10,8 @@ variable "environment" {
   type = string
 }
 
+data "aws_caller_identity" "current" {}
+
 # ---------------------------------------------------------------------------
 # KMS Key for ECR Encryption
 # ---------------------------------------------------------------------------
@@ -17,9 +19,23 @@ resource "aws_kms_key" "ecr" {
   description             = "KMS key for ECR repository"
   deletion_window_in_days = 7
   enable_key_rotation     = true
+  policy                  = data.aws_iam_policy_document.ecr_kms.json # CKV2_AWS_64
 
   tags = {
     Name = "${var.project_name}-${var.environment}-ecr-kms"
+  }
+}
+
+data "aws_iam_policy_document" "ecr_kms" {
+  statement {
+    sid       = "Enable IAM User Permissions"
+    effect    = "Allow"
+    actions   = ["kms:*"]
+    resources = ["*"]
+    principals {
+      type        = "AWS"
+      identifiers = ["arn:aws:iam::${data.aws_caller_identity.current.account_id}:root"]
+    }
   }
 }
 

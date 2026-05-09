@@ -41,8 +41,10 @@ variable "node_desired_size" {
 variable "cluster_endpoint_public_access_cidrs" {
   description = "List of CIDR blocks which can access the Amazon EKS public API server endpoint"
   type        = list(string)
-  default     = ["0.0.0.0/0"] # TODO: Restrict to your IP for CKV_AWS_38
+  default     = [] # CKV_AWS_38: Default empty to restrict access
 }
+
+data "aws_caller_identity" "current" {}
 
 # ---------------------------------------------------------------------------
 # KMS Key for EKS Secrets Encryption
@@ -51,9 +53,23 @@ resource "aws_kms_key" "eks" {
   description             = "KMS key for EKS secrets encryption"
   deletion_window_in_days = 7
   enable_key_rotation     = true
+  policy                  = data.aws_iam_policy_document.eks_kms.json # CKV2_AWS_64
 
   tags = {
     Name = "${var.project_name}-${var.environment}-eks-kms"
+  }
+}
+
+data "aws_iam_policy_document" "eks_kms" {
+  statement {
+    sid       = "Enable IAM User Permissions"
+    effect    = "Allow"
+    actions   = ["kms:*"]
+    resources = ["*"]
+    principals {
+      type        = "AWS"
+      identifiers = ["arn:aws:iam::${data.aws_caller_identity.current.account_id}:root"]
+    }
   }
 }
 
@@ -96,8 +112,8 @@ resource "aws_eks_cluster" "main" {
   vpc_config {
     subnet_ids              = var.private_subnet_ids
     endpoint_private_access = true
-    endpoint_public_access  = true # Set false for 100% CKV_AWS_39 compliance (requires VPN/Bastion)
-    public_access_cidrs     = var.cluster_endpoint_public_access_cidrs # CKV_AWS_38
+    endpoint_public_access  = false # CKV_AWS_39: Best practice is private-only
+    public_access_cidrs     = var.cluster_endpoint_public_access_cidrs
     security_group_ids      = [aws_security_group.cluster.id]
   }
 
@@ -129,7 +145,7 @@ resource "aws_eks_cluster" "main" {
 resource "aws_cloudwatch_log_group" "eks" {
   # The name MUST be /aws/eks/<cluster-name>/cluster
   name              = "/aws/eks/${var.project_name}-${var.environment}/cluster"
-  retention_in_days = 365 # CKV_AWS_338
+  retention_in_days = 365                 # CKV_AWS_338
   kms_key_id        = aws_kms_key.eks.arn # CKV_AWS_158
 }
 
