@@ -283,21 +283,3 @@ Since `/process` is business-critical, we define explicit SLOs:
 | **Compliance** | OPA/Gatekeeper policies for pod security standards enforcement |
 
 ---
-
-## Interview Discussion Topics
-
-This repo is designed to spark discussion around:
-
-1. **Trade-offs**: Why these tools over alternatives? (e.g., why not Istio?)
-2. **3-person team fit**: Every tool adds operational cost — what's the right balance?
-3. **Alert design**: The 1% error threshold vs. 5% failure rate — intentional tension
-4. **Observability pyramid**: Metrics → Logs → Traces and when each matters
-5. **Security layers**: Container → Pod → Network → IAM → Secrets
-6. **GitOps workflow**: How changes flow from PR to production
-7. **Scaling strategy**: HPA tuning, scale-down stabilization, PDB interaction
-
----
-
-## License
-
-MIT
