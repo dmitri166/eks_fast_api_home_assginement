@@ -10,6 +10,43 @@ variable "environment" {
   type = string
 }
 
+data "aws_caller_identity" "current" {}
+
+# ---------------------------------------------------------------------------
+# KMS Key for ECR Encryption
+# ---------------------------------------------------------------------------
+resource "aws_kms_key" "ecr" {
+  description             = "KMS key for ECR repository"
+  deletion_window_in_days = 7
+  enable_key_rotation     = true
+  policy                  = data.aws_iam_policy_document.ecr_kms.json # CKV2_AWS_64
+
+  tags = {
+    Name = "${var.project_name}-${var.environment}-ecr-kms"
+  }
+}
+
+data "aws_iam_policy_document" "ecr_kms" {
+  # checkov:skip=CKV_AWS_111: Standard root key policy to prevent lockout
+  # checkov:skip=CKV_AWS_356: Standard root key policy to prevent lockout
+  # checkov:skip=CKV_AWS_109: Standard root key policy to prevent lockout
+  statement {
+    sid       = "Enable IAM User Permissions"
+    effect    = "Allow"
+    actions   = ["kms:*"]
+    resources = ["*"]
+    principals {
+      type        = "AWS"
+      identifiers = ["arn:aws:iam::${data.aws_caller_identity.current.account_id}:root"]
+    }
+  }
+}
+
+resource "aws_kms_alias" "ecr" {
+  name          = "alias/${var.project_name}-${var.environment}-ecr"
+  target_key_id = aws_kms_key.ecr.key_id
+}
+
 # ---------------------------------------------------------------------------
 # ECR Repository
 # ---------------------------------------------------------------------------
@@ -22,7 +59,8 @@ resource "aws_ecr_repository" "main" {
   }
 
   encryption_configuration {
-    encryption_type = "AES256"
+    encryption_type = "KMS"
+    kms_key         = aws_kms_key.ecr.arn # CKV_AWS_136: Use KMS for ECR encryption
   }
 
   tags = {

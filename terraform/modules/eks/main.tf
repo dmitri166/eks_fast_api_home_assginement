@@ -38,6 +38,14 @@ variable "node_desired_size" {
   type = number
 }
 
+variable "cluster_endpoint_public_access_cidrs" {
+  description = "List of CIDR blocks which can access the Amazon EKS public API server endpoint"
+  type        = list(string)
+  default     = [] # CKV_AWS_38: Default empty to restrict access
+}
+
+data "aws_caller_identity" "current" {}
+
 # ---------------------------------------------------------------------------
 # KMS Key for EKS Secrets Encryption
 # ---------------------------------------------------------------------------
@@ -45,9 +53,26 @@ resource "aws_kms_key" "eks" {
   description             = "KMS key for EKS secrets encryption"
   deletion_window_in_days = 7
   enable_key_rotation     = true
+  policy                  = data.aws_iam_policy_document.eks_kms.json # CKV2_AWS_64
 
   tags = {
     Name = "${var.project_name}-${var.environment}-eks-kms"
+  }
+}
+
+data "aws_iam_policy_document" "eks_kms" {
+  # checkov:skip=CKV_AWS_111: Standard root key policy to prevent lockout
+  # checkov:skip=CKV_AWS_356: Standard root key policy to prevent lockout
+  # checkov:skip=CKV_AWS_109: Standard root key policy to prevent lockout
+  statement {
+    sid       = "Enable IAM User Permissions"
+    effect    = "Allow"
+    actions   = ["kms:*"]
+    resources = ["*"]
+    principals {
+      type        = "AWS"
+      identifiers = ["arn:aws:iam::${data.aws_caller_identity.current.account_id}:root"]
+    }
   }
 }
 
@@ -90,7 +115,8 @@ resource "aws_eks_cluster" "main" {
   vpc_config {
     subnet_ids              = var.private_subnet_ids
     endpoint_private_access = true
-    endpoint_public_access  = true # Set false in production with VPN
+    endpoint_public_access  = false # CKV_AWS_39: Best practice is private-only
+    public_access_cidrs     = var.cluster_endpoint_public_access_cidrs
     security_group_ids      = [aws_security_group.cluster.id]
   }
 
@@ -112,7 +138,18 @@ resource "aws_eks_cluster" "main" {
   depends_on = [
     aws_iam_role_policy_attachment.cluster_policy,
     aws_iam_role_policy_attachment.cluster_vpc_controller,
+    aws_cloudwatch_log_group.eks
   ]
+}
+
+# ---------------------------------------------------------------------------
+# CloudWatch Log Group for EKS (Encrypted)
+# ---------------------------------------------------------------------------
+resource "aws_cloudwatch_log_group" "eks" {
+  # The name MUST be /aws/eks/<cluster-name>/cluster
+  name              = "/aws/eks/${var.project_name}-${var.environment}/cluster"
+  retention_in_days = 365                 # CKV_AWS_338
+  kms_key_id        = aws_kms_key.eks.arn # CKV_AWS_158
 }
 
 # ---------------------------------------------------------------------------

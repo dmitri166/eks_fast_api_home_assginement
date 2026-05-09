@@ -28,7 +28,7 @@ spec:
             description: |
               /process error rate is {{ "{{ $value | humanizePercentage }}" }}
               (threshold: 1%). This is a business-critical endpoint.
-            runbook_url: "https://github.com/<YOUR_GITHUB_USERNAME>/AI_infra_assignment/blob/main/docs/runbook.md#processhigherrorrate"
+            runbook_url: "https://github.com/dmitri166/eks_fast_api_home_assginement/blob/main/docs/runbook.md#processhigherrorrate"
 
         # ---------------------------------------------------------------
         # WARNING: /process p99 latency > 400ms
@@ -61,7 +61,7 @@ spec:
           annotations:
             summary: "FastAPI app has no available replicas"
             description: "All pods are down. Immediate investigation required."
-            runbook_url: "https://github.com/<YOUR_GITHUB_USERNAME>/AI_infra_assignment/blob/main/docs/runbook.md#appdown"
+            runbook_url: "https://github.com/dmitri166/eks_fast_api_home_assginement/blob/main/docs/runbook.md#appdown"
 
         # ---------------------------------------------------------------
         # WARNING: High memory usage (> 90% of limit)
