@@ -61,6 +61,9 @@ resource "aws_kms_key" "eks" {
 }
 
 data "aws_iam_policy_document" "eks_kms" {
+  # checkov:skip=CKV_AWS_111: Standard root key policy to prevent lockout
+  # checkov:skip=CKV_AWS_356: Standard root key policy to prevent lockout
+  # checkov:skip=CKV_AWS_109: Standard root key policy to prevent lockout
   statement {
     sid       = "Enable IAM User Permissions"
     effect    = "Allow"
