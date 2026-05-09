@@ -7,6 +7,8 @@
 name: CI/CD Pipeline
 
 on:
+  push:
+    branches: [master]
   pull_request:
     branches: [master]
 
@@ -190,31 +192,25 @@ jobs:
     name: "Deploy"
     runs-on: ubuntu-latest
     needs: [build, scan]
-    if: github.ref == 'refs/heads/master' && github.event_name == 'push'  # Won't trigger on PR-only; kept as production reference
+    if: github.ref == 'refs/heads/master' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
     environment: production
     steps:
       - uses: actions/checkout@v4
 
       # In a real setup, this would push to ECR and update the ArgoCD Application
       # For this demo, we show the dry-run approach
-      - name: Render Helm template (dry-run)
+      - name: Update Image Tag in GitOps (Production Best Practice)
         run: |
-          helm template fastapi-app helm/fastapi-app/ \
-            --set image.tag=${{ env.IMAGE_TAG }} \
-            --namespace fastapi-app \
-            > /tmp/rendered-manifests.yaml
-
-          echo "Rendered manifests:"
-          cat /tmp/rendered-manifests.yaml | head -50
-          echo "..."
-          echo "Total lines: $(wc -l < /tmp/rendered-manifests.yaml)"
-
-      # In production, use argocd-image-updater or:
-      # - name: Update ArgoCD Application image
-      #   run: |
-      #     argocd app set fastapi-app \
-      #       --parameter image.tag=${{ env.IMAGE_TAG }} \
-      #       --grpc-web
+          # Use sed or yq to update the tag in values.yaml
+          # This persists the change in Git, enabling ArgoCD to sync the new state.
+          sed -i 's/tag: .*/tag: "${{ env.IMAGE_TAG }}"/' helm/fastapi-app/values.yaml
+          
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          
+          git add helm/fastapi-app/values.yaml
+          git commit -m "chore(gitops): update image tag to ${{ env.IMAGE_TAG }} [skip ci]"
+          git push origin master
 
       - name: Deploy summary
         run: |
