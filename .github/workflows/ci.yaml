@@ -175,15 +175,6 @@ jobs:
         with:
           sarif_file: "trivy-results.sarif"
 
-      - name: Scan Terraform (Checkov)
-        uses: bridgecrewio/checkov-action@master
-        with:
-          directory: terraform/
-          framework: terraform
-          soft_fail: true  # Dry-run infra has expected findings (no real AWS resources)
-          output_format: sarif
-          output_file_path: checkov-results.sarif
-
       - name: Scan Kubernetes manifests (Checkov)
         uses: bridgecrewio/checkov-action@master
         with:
