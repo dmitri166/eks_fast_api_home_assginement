@@ -18,7 +18,7 @@ env:
   IMAGE_TAG: ${{ github.sha }}
 
 permissions:
-  contents: read
+  contents: write          # For creating promotion PRs
   id-token: write          # For AWS OIDC authentication
   security-events: write   # For uploading SARIF results
   pull-requests: write     # For PR comments
@@ -199,18 +199,34 @@ jobs:
 
       # In a real setup, this would push to ECR and update the ArgoCD Application
       # For this demo, we show the dry-run approach
-      - name: Update Image Tag in GitOps (Production Best Practice)
+      - name: Update Image Tag
         run: |
-          # Use sed or yq to update the tag in values.yaml
-          # This persists the change in Git, enabling ArgoCD to sync the new state.
           sed -i 's/tag: .*/tag: "${{ env.IMAGE_TAG }}"/' helm/fastapi-app/values.yaml
-          
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          
-          git add helm/fastapi-app/values.yaml
-          git commit -m "chore(gitops): update image tag to ${{ env.IMAGE_TAG }} [skip ci]"
-          git push origin master
+
+      - name: Create Promotion Pull Request (Production Best Practice)
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: "chore(gitops): update image tag to ${{ env.IMAGE_TAG }}"
+          committer: "github-actions[bot] <github-actions[bot]@users.noreply.github.com>"
+          author: "github-actions[bot] <github-actions[bot]@users.noreply.github.com>"
+          branch: "deploy/fastapi-app-${{ env.IMAGE_TAG }}"
+          delete-branch: true
+          title: "🚀 [Promotion] Update image tag to `${{ env.IMAGE_TAG }}`"
+          body: |
+            ## 🚀 Deployment Promotion
+            This PR was automatically generated to update the production image tag.
+
+            ### Details:
+            - **Image Tag**: `${{ env.IMAGE_TAG }}`
+            - **Commit**: `${{ github.sha }}`
+            - **Environment**: `production`
+
+            **Action Required**: Approve and merge this PR to trigger ArgoCD synchronization.
+          labels: |
+            deployment
+            gitops
+            automated-pr
 
       - name: Deploy summary
         run: |
