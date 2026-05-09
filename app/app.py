@@ -128,11 +128,13 @@ def _handle_sigterm(signum, frame):
 
 signal.signal(signal.SIGTERM, _handle_sigterm)
 
+
 # ---------------------------------------------------------------------------
 # FastAPI Application & Global Error Handling
 # ---------------------------------------------------------------------------
 class BusinessLogicError(Exception):
     """Custom exception for known business failures."""
+
     pass
 
 
@@ -154,7 +156,7 @@ async def business_exception_handler(request: Request, exc: BusinessLogicError):
         content={
             "error": "processing_failed",
             "detail": str(exc),
-            "request_id": request_id, 
+            "request_id": request_id,
         },
     )
 
@@ -166,8 +168,12 @@ async def global_exception_handler(request: Request, exc: Exception):
     Catches all unhandled exceptions, logs them with full context, and
     returns a professional, structured JSON response.
     """
-    request_id = request.state.request_id if hasattr(request.state, "request_id") else str(uuid.uuid4())
-    
+    request_id = (
+        request.state.request_id
+        if hasattr(request.state, "request_id")
+        else str(uuid.uuid4())
+    )
+
     logger.error(
         "unhandled_exception",
         error=str(exc),
@@ -208,7 +214,11 @@ async def observability_middleware(request: Request, call_next):
 
     # Bind structured logging context
     structlog.contextvars.clear_contextvars()
-    log_context = {"request_id": request_id, "method": request.method, "path": request.url.path}
+    log_context = {
+        "request_id": request_id,
+        "method": request.method,
+        "path": request.url.path,
+    }
     if trace_id:
         log_context["trace_id"] = trace_id
     structlog.contextvars.bind_contextvars(**log_context)
@@ -258,7 +268,7 @@ def process():
     """Business-critical endpoint with OTel integration."""
     start = time.time()
     tracer = telemetry.get_tracer()
-    
+
     # Custom business span if tracing is active
     span = None
     if tracer:

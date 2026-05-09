@@ -19,41 +19,48 @@ logger = structlog.get_logger("telemetry")
 OTEL_ENABLED = os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT", "") != ""
 tracer = None
 
+
 def setup_tracing(app):
     """
     Initialize OpenTelemetry tracing and instrument the FastAPI app.
     """
     global tracer, OTEL_ENABLED
-    
+
     if not OTEL_ENABLED:
         logger.info("tracing_disabled", reason="endpoint_not_configured")
         return None
 
     try:
         # Define service resource
-        resource = Resource.create({
-            "service.name": os.getenv("OTEL_SERVICE_NAME", "fastapi-app"),
-            "service.version": "1.0.0",
-            "deployment.environment": os.getenv("ENVIRONMENT", "production"),
-        })
+        resource = Resource.create(
+            {
+                "service.name": os.getenv("OTEL_SERVICE_NAME", "fastapi-app"),
+                "service.version": "1.0.0",
+                "deployment.environment": os.getenv("ENVIRONMENT", "production"),
+            }
+        )
 
         # Set up tracer provider and OTLP exporter
         provider = TracerProvider(resource=resource)
         processor = BatchSpanProcessor(OTLPSpanExporter())
         provider.add_span_processor(processor)
         trace.set_tracer_provider(provider)
-        
+
         # Instrument the app
         FastAPIInstrumentor.instrument_app(app)
-        
+
         tracer = trace.get_tracer("fastapi_app")
-        logger.info("tracing_initialized", service_name=os.getenv("OTEL_SERVICE_NAME", "fastapi-app"))
+        logger.info(
+            "tracing_initialized",
+            service_name=os.getenv("OTEL_SERVICE_NAME", "fastapi-app"),
+        )
         return tracer
 
     except Exception as e:
         logger.error("tracing_initialization_failed", error=str(e))
         OTEL_ENABLED = False
         return None
+
 
 def get_tracer():
     """Returns the initialized tracer or None."""
