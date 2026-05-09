@@ -39,7 +39,9 @@ if OTEL_ENABLED:
             OTLPSpanExporter,
         )
         from opentelemetry.sdk.resources import Resource
-        from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
+        from opentelemetry.instrumentation.fastapi import (
+            FastAPIInstrumentor as OTelFastAPIInstrumentor,
+        )
 
         resource = Resource.create(
             {
@@ -54,6 +56,11 @@ if OTEL_ENABLED:
         tracer = trace.get_tracer("fastapi_app")
     except ImportError:
         OTEL_ENABLED = False
+        trace = None
+        OTelFastAPIInstrumentor = None
+else:
+    trace = None
+    OTelFastAPIInstrumentor = None
 
 
 # ---------------------------------------------------------------------------
@@ -138,10 +145,8 @@ async def lifespan(app: FastAPI):
     # Give in-flight requests time to complete
     time.sleep(min(GRACEFUL_SHUTDOWN_TIMEOUT, 5))
     # Flush tracing spans before exit
-    if OTEL_ENABLED:
+    if OTEL_ENABLED and trace:
         try:
-            from opentelemetry import trace
-
             trace.get_tracer_provider().force_flush()
         except Exception:
             pass
@@ -168,11 +173,9 @@ app = FastAPI(
 )
 
 # Auto-instrument FastAPI with OpenTelemetry (if enabled)
-if OTEL_ENABLED:
+if OTEL_ENABLED and OTelFastAPIInstrumentor:
     try:
-        from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
-
-        FastAPIInstrumentor.instrument_app(app)
+        OTelFastAPIInstrumentor.instrument_app(app)
     except Exception:
         pass
 
@@ -188,11 +191,9 @@ async def observability_middleware(request: Request, call_next):
 
     # Extract trace ID from OpenTelemetry span if available
     trace_id = ""
-    if OTEL_ENABLED:
+    if OTEL_ENABLED and trace:
         try:
-            from opentelemetry import trace as otel_trace
-
-            span = otel_trace.get_current_span()
+            span = trace.get_current_span()
             ctx = span.get_span_context()
             if ctx.is_valid:
                 trace_id = format(ctx.trace_id, "032x")
