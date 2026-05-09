@@ -6,6 +6,13 @@ Decoupled from main application logic for better code cleanliness.
 import os
 import structlog
 
+from opentelemetry import trace
+from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
+from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
+from opentelemetry.sdk.resources import Resource
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.export import BatchSpanProcessor
+
 logger = structlog.get_logger("telemetry")
 
 # Global flag for other modules to check
@@ -15,7 +22,6 @@ tracer = None
 def setup_tracing(app):
     """
     Initialize OpenTelemetry tracing and instrument the FastAPI app.
-    Gracefully degrades if libraries are missing or configuration is absent.
     """
     global tracer, OTEL_ENABLED
     
@@ -24,13 +30,6 @@ def setup_tracing(app):
         return None
 
     try:
-        from opentelemetry import trace
-        from opentelemetry.sdk.trace import TracerProvider
-        from opentelemetry.sdk.trace.export import BatchSpanProcessor
-        from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
-        from opentelemetry.sdk.resources import Resource
-        from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
-
         # Define service resource
         resource = Resource.create({
             "service.name": os.getenv("OTEL_SERVICE_NAME", "fastapi-app"),
@@ -51,10 +50,6 @@ def setup_tracing(app):
         logger.info("tracing_initialized", service_name=os.getenv("OTEL_SERVICE_NAME", "fastapi-app"))
         return tracer
 
-    except ImportError as e:
-        logger.warning("tracing_initialization_failed", error=str(e), reason="missing_libraries")
-        OTEL_ENABLED = False
-        return None
     except Exception as e:
         logger.error("tracing_initialization_failed", error=str(e))
         OTEL_ENABLED = False

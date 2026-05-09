@@ -29,6 +29,8 @@ from prometheus_client import (
     generate_latest,
 )
 
+from opentelemetry import trace as otel_trace
+
 # Internal module for tracing
 import telemetry
 
@@ -114,12 +116,7 @@ async def lifespan(app: FastAPI):
     logger.info("application_shutting_down", timeout=GRACEFUL_SHUTDOWN_TIMEOUT)
     time.sleep(min(GRACEFUL_SHUTDOWN_TIMEOUT, 5))
     if telemetry.OTEL_ENABLED:
-        try:
-            from opentelemetry import trace as otel_trace
-
-            otel_trace.get_tracer_provider().force_flush()
-        except ImportError:
-            pass
+        otel_trace.get_tracer_provider().force_flush()
     logger.info("application_stopped")
 
 
@@ -203,7 +200,6 @@ async def observability_middleware(request: Request, call_next):
     trace_id = ""
     if telemetry.OTEL_ENABLED:
         try:
-            from opentelemetry import trace as otel_trace
             span = otel_trace.get_current_span()
             if span.get_span_context().is_valid:
                 trace_id = format(span.get_span_context().trace_id, "032x")
