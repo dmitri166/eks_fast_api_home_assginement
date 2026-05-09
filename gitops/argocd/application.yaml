@@ -20,7 +20,7 @@ spec:
 
   source:
     repoURL: https://github.com/dmitri166/eks_fast_api_home_assginement.git
-    targetRevision: main
+    targetRevision: master
     path: helm/fastapi-app
     helm:
       valueFiles:
