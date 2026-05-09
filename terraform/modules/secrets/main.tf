@@ -61,6 +61,20 @@ resource "aws_secretsmanager_secret" "app" {
   }
 }
 
+# ---------------------------------------------------------------------------
+# Secret Rotation Configuration (Stub)
+# ---------------------------------------------------------------------------
+# CKV2_AWS_57: Ensure Secrets Manager secrets have automatic rotation enabled.
+# In a real environment, this would point to a Lambda function.
+# resource "aws_secretsmanager_secret_rotation" "app" {
+#   secret_id           = aws_secretsmanager_secret.app.id
+#   rotation_lambda_arn = "arn:aws:lambda:region:account:function:rotation-fn"
+#
+#   rotation_rules {
+#     automatically_after_days = 30
+#   }
+# }
+
 resource "aws_secretsmanager_secret_version" "app" {
   secret_id = aws_secretsmanager_secret.app.id
   secret_string = jsonencode({

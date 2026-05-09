@@ -11,6 +11,24 @@ variable "environment" {
 }
 
 # ---------------------------------------------------------------------------
+# KMS Key for ECR Encryption
+# ---------------------------------------------------------------------------
+resource "aws_kms_key" "ecr" {
+  description             = "KMS key for ECR repository"
+  deletion_window_in_days = 7
+  enable_key_rotation     = true
+
+  tags = {
+    Name = "${var.project_name}-${var.environment}-ecr-kms"
+  }
+}
+
+resource "aws_kms_alias" "ecr" {
+  name          = "alias/${var.project_name}-${var.environment}-ecr"
+  target_key_id = aws_kms_key.ecr.key_id
+}
+
+# ---------------------------------------------------------------------------
 # ECR Repository
 # ---------------------------------------------------------------------------
 resource "aws_ecr_repository" "main" {
@@ -22,7 +40,8 @@ resource "aws_ecr_repository" "main" {
   }
 
   encryption_configuration {
-    encryption_type = "AES256"
+    encryption_type = "KMS"
+    kms_key         = aws_kms_key.ecr.arn # CKV_AWS_136: Use KMS for ECR encryption
   }
 
   tags = {

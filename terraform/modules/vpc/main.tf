@@ -39,7 +39,7 @@ resource "aws_subnet" "public" {
   vpc_id                  = aws_vpc.main.id
   cidr_block              = cidrsubnet(var.vpc_cidr, 8, count.index)
   availability_zone       = var.availability_zones[count.index]
-  map_public_ip_on_launch = true
+  map_public_ip_on_launch = false # CKV_AWS_130: Best practice is to avoid automatic public IP assignment
 
   tags = {
     Name                                                           = "${var.project_name}-${var.environment}-public-${var.availability_zones[count.index]}"
@@ -138,6 +138,27 @@ resource "aws_route_table_association" "private" {
 # ---------------------------------------------------------------------------
 # VPC Flow Logs
 # ---------------------------------------------------------------------------
+# ---------------------------------------------------------------------------
+# KMS Key for Flow Logs Encryption
+# ---------------------------------------------------------------------------
+resource "aws_kms_key" "logs" {
+  description             = "KMS key for VPC flow logs"
+  deletion_window_in_days = 7
+  enable_key_rotation     = true
+
+  tags = {
+    Name = "${var.project_name}-${var.environment}-logs-kms"
+  }
+}
+
+resource "aws_kms_alias" "logs" {
+  name          = "alias/${var.project_name}-${var.environment}-logs"
+  target_key_id = aws_kms_key.logs.key_id
+}
+
+# ---------------------------------------------------------------------------
+# VPC Flow Logs
+# ---------------------------------------------------------------------------
 resource "aws_flow_log" "main" {
   vpc_id               = aws_vpc.main.id
   traffic_type         = "ALL"
@@ -148,7 +169,8 @@ resource "aws_flow_log" "main" {
 
 resource "aws_cloudwatch_log_group" "flow_logs" {
   name              = "/aws/vpc/flow-logs/${var.project_name}-${var.environment}"
-  retention_in_days = 30
+  retention_in_days = 365 # CKV_AWS_338: Retain logs for at least 1 year
+  kms_key_id        = aws_kms_key.logs.arn # CKV_AWS_158: Encrypt logs with KMS
 }
 
 resource "aws_iam_role" "flow_logs" {
@@ -174,16 +196,28 @@ resource "aws_iam_role_policy" "flow_logs" {
     Version = "2012-10-17"
     Statement = [{
       Action = [
-        "logs:CreateLogGroup",
         "logs:CreateLogStream",
         "logs:PutLogEvents",
         "logs:DescribeLogGroups",
         "logs:DescribeLogStreams"
       ]
       Effect   = "Allow"
-      Resource = "*"
+      Resource = "${aws_cloudwatch_log_group.flow_logs.arn}:*" # CKV_AWS_355: Restricted to specific log group
     }]
   })
+}
+
+# ---------------------------------------------------------------------------
+# Default Security Group — Restrict All Traffic
+# ---------------------------------------------------------------------------
+resource "aws_default_security_group" "default" {
+  vpc_id = aws_vpc.main.id
+
+  # CKV2_AWS_12: Ensure default security group restricts all traffic
+  # No ingress or egress rules defined = everything blocked
+  tags = {
+    Name = "${var.project_name}-${var.environment}-default-sg"
+  }
 }
 
 # ---------------------------------------------------------------------------
