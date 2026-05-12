@@ -4,7 +4,7 @@
 # Usage: make <target>
 # =============================================================================
 
-.PHONY: help test lint build run clean helm-lint helm-template tf-validate
+.PHONY: help test lint format build run clean helm-lint helm-template tf-validate
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-18s\033[0m %s\n", $$1, $$2}'
@@ -18,6 +18,9 @@ test: ## Run unit tests with coverage
 
 lint: ## Lint Python code
 	cd app && pip install ruff -q && ruff check . && ruff format --check .
+
+format: ## Format Python code
+	cd app && pip install ruff -q && ruff format .
 
 build: ## Build Docker image
 	cd app && docker build -t fastapi-app:local .

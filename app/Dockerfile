@@ -43,7 +43,7 @@ ENV PATH="/opt/venv/bin:$PATH" \
 
 # Copy application code
 WORKDIR /app
-COPY app.py .
+COPY app.py telemetry.py ./
 
 # Create tmp dir for any temp files (read-only rootfs compatible)
 RUN mkdir -p /tmp/app && chown appuser:appuser /tmp/app
