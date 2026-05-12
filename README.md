@@ -231,8 +231,9 @@ For a 3-person platform team, production-ready means **high confidence with low 
 - ✅ External Secrets Operator for secrets management
 
 ### 4. Fully Automated
-- ✅ CI/CD: push to main → lint → test → build → scan → deploy
+- ✅ CI/CD: push to main → lint → test → build → scan → deployment PR
 - ✅ GitOps: ArgoCD auto-sync with self-heal and pruning
+- ✅ Promotion PR Pattern: Automated Git consistency with a final human review gate
 - ✅ Terraform: infrastructure changes via PR review with plan output
 
 ---
