@@ -7,7 +7,7 @@ replicaCount: 2
 
 image:
   repository: 123456789012.dkr.ecr.us-east-1.amazonaws.com/fastapi-app
-  tag: "latest"
+  tag: "8512ccd13a95ea98b172c1a11eaa737f3d415c51"
   pullPolicy: IfNotPresent
 
 # -- Service
